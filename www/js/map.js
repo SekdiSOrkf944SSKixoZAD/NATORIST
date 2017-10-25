@@ -1,13 +1,60 @@
+//OpenLayers.Control.Crosshairs のクラスを設定
+OpenLayers.Control.Crosshairs = OpenLayers.Class(OpenLayers.Control, {
+  imgUrl: null,
+  size: null,
+  position: null,
+  initialize: function(options) {
+    OpenLayers.Control.prototype.initialize.apply(this, arguments);
+  },
+  draw: function() {
+    OpenLayers.Control.prototype.draw.apply(this, arguments);
+    var px = this.position.clone();
+    var centered = new OpenLayers.Pixel(Math.round(px.x - (this.size.w / 2)), Math.round(px.y - (this.size.h / 2)));
+    this.buttons = new Array();
+    this.div = OpenLayers.Util.createAlphaImageDiv(
+        OpenLayers.Util.createUniqueID("OpenLayers.Control.Crosshairs_"), 
+        centered, 
+        this.size, 
+        this.imgUrl, 
+        "absolute");
+    return this.div;
+  },
+  setPosition: function(position) {
+    this.position = position;
+    var px = this.position.clone();
+    var centered = new OpenLayers.Pixel(Math.round(px.x - (this.size.w / 2)), Math.round(px.y - (this.size.h / 2)));
+    this.div.style.left = centered.x + "px";
+    this.div.style.top = centered.y + "px";
+  },
+  CLASS_NAME: "OpenLayers.Control.Crosshairs"
+});
+
+
+var    projection3857 = new OpenLayers.Projection("EPSG:3857");
+var    projection4326 = new OpenLayers.Projection("EPSG:4326");
+var    projection900913 = new OpenLayers.Projection("EPSG:900913")
+
+
 //OSMの描画
 function writemap(lat,lon) {
     map = new OpenLayers.Map("canvas");
     var mapnik = new OpenLayers.Layer.OSM();
     map.addLayer(mapnik);
+        
+    var cross = new OpenLayers.Control.Crosshairs( {
+        imgUrl: "crosshair.png",
+        size: new OpenLayers.Size( 32, 32 ),
+        position: new OpenLayers.Pixel(
+          map.getCurrentSize().w / 2,
+          map.getCurrentSize().h / 2 )
+    } );
+    map.addControl(cross);
+
     console.log(lat+":"+lon+":");
     var lonLat = new OpenLayers.LonLat(lat,lon)
         .transform(
-            new OpenLayers.Projection("EPSG:4326"), 
-            new OpenLayers.Projection("EPSG:900913")
+            projection4326, 
+            projection900913
         );
     map.setCenter(lonLat, 15);
     var markers = new OpenLayers.Layer.Markers("Markers");
@@ -16,8 +63,8 @@ function writemap(lat,lon) {
     var marker = new OpenLayers.Marker(
     new OpenLayers.LonLat(lat,lon)
         .transform(
-            new OpenLayers.Projection("EPSG:4326"), 
-            new OpenLayers.Projection("EPSG:900913")
+           projection4326, 
+           projection900913
         )
     );
     markers.addMarker(marker);
@@ -62,10 +109,20 @@ function CurrentPoint(){
 }
 
 //現在地をポイントとして登録する
+// function save_geopoint(){
+//     //alert("save_geopoint");
+//     navigator.geolocation.getCurrentPosition(onSaveSuccess, onGeoError, geoOption);
+//     console.log("save_geopoint");
+//}
+
+//中心地をポイントとして登録する
  function save_geopoint(){
-     //alert("save_geopoint");
-     navigator.geolocation.getCurrentPosition(onSaveSuccess, onGeoError, geoOption);
-     console.log("save_geopoint");
+    //alert("save_geopoint");
+    var lonLat = map.getCenter().transform(projection4326,projection900913);
+    lonLat.lat = Math.round(lonLat.lat*1000000)/1000000;
+    lonLat.lon = Math.round(lonLat.lon*1000000)/1000000;
+    alert(lonLat);
+console.log("save_geopoint");
 }
 
 //ポイントの登録時に位置情報取得に成功した場合のコールバック
@@ -121,8 +178,8 @@ function onFindSuccess(location){
                                 var marker = new OpenLayers.Marker(
                                     new OpenLayers.LonLat(regist_location.longitude,regist_location.latitude)
                                                 .transform(
-                                                new OpenLayers.Projection("EPSG:4326"), 
-                                                new OpenLayers.Projection("EPSG:900913")
+                                                   projection4326, 
+                                                   projection900913
                                             )
                                 );
                                 markers.addMarker(marker);
