@@ -32,8 +32,9 @@ OpenLayers.Control.Crosshairs = OpenLayers.Class(OpenLayers.Control, {
 
 var    projection3857 = new OpenLayers.Projection("EPSG:3857");
 var    projection4326 = new OpenLayers.Projection("EPSG:4326");
-var    projection900913 = new OpenLayers.Projection("EPSG:900913")
+var    projection900913 = new OpenLayers.Projection("EPSG:900913");
 
+var popup = null;
 
 //OSMの描画
 function writemap(lat,lon) {
@@ -57,17 +58,6 @@ function writemap(lat,lon) {
             projection900913
         );
     map.setCenter(lonLat, 15);
-    var markers = new OpenLayers.Layer.Markers("Markers");
-    map.addLayer(markers);
-
-    var marker = new OpenLayers.Marker(
-    new OpenLayers.LonLat(lat,lon)
-        .transform(
-           projection4326, 
-           projection900913
-        )
-    );
-    markers.addMarker(marker);
 }
 
 
@@ -118,11 +108,63 @@ function CurrentPoint(){
 //中心地をポイントとして登録する
  function save_geopoint(){
     //alert("save_geopoint");
-    var lonLat = map.getCenter().transform(projection4326,projection900913);
+    var lonLat = map.getCenter().transform(projection900913,projection4326);
     lonLat.lat = Math.round(lonLat.lat*1000000)/1000000;
     lonLat.lon = Math.round(lonLat.lon*1000000)/1000000;
-    alert(lonLat);
-console.log("save_geopoint");
+    //alert(lonLat.lon+","+lonLat.lat);
+    navigator.notification.prompt(
+            ' ',  // メッセージ
+            onPrompt,                  // 呼び出すコールバック
+            'ポンイントの登録',            // タイトル
+            ['登録','やめる'],             // ボタンのラベル名
+            'ポイント名'                 // デフォルトのテキスト
+        );
+
+        function onPrompt(results) {
+            var geoPoint = new ncmb.GeoPoint(lonLat.lat, lonLat.lon);
+            var Places = ncmb.DataStore("PlacePoints");
+            var point = new Places();
+            point.set("name",results.input1);
+            point.set("geo", geoPoint);
+
+            point.save()
+            .then(function(){
+                console.log(lonLat.lat + ":" + lonLat.lon);
+
+                var markers = new OpenLayers.Layer.Markers("Markers");
+                map.addLayer(markers);
+
+                var iconsize = new OpenLayers.Size(32, 32);
+                var point    = new OpenLayers.Pixel(-(iconsize.w/2), -iconsize.h);
+                var marker = new OpenLayers.Marker(
+                new OpenLayers.LonLat(lonLat.lon,lonLat.lat)
+                    .transform(projection4326,projection900913),
+                new OpenLayers.Icon('point_na32.png', iconsize, point)
+                );
+                
+                //ポイント名をポップアップで表示
+                //marker.tag = results.input1;
+                marker.tag = '<a href="http://www.sendai-nct.ac.jp">仙台高専</a>';
+                // マーカーをタップした際にポップアップを表示します
+                marker.events.register("touchstart", marker, function(event) {
+                 // すでに別なポップアップが開いていたら消します
+                 if (popup) map.removePopup(popup);
+                 // ポップアップを作成
+                 popup = new OpenLayers.Popup("chicken",
+                 event.object.lonlat,
+                 new OpenLayers.Size(100,50),
+                 event.object.tag,
+                 true);
+                 // 作成したポップアップを地図に追加します
+                 map.addPopup(popup);
+                 });
+
+                markers.addMarker(marker);
+                console.log("save_geopoint");
+            })
+            .catch(function(err){// エラー処理
+            });
+        }
 }
 
 //ポイントの登録時に位置情報取得に成功した場合のコールバック
@@ -136,7 +178,7 @@ function onSaveSuccess(location){
         );
 
         function onPrompt(results) {
-            current.geopoint = location.coords; 
+            //current.geopoint = location.coords; 
             var geoPoint = new ncmb.GeoPoint(location.coords.latitude, location.coords.longitude);
             console.log(location.coords.latitude + ":" + location.coords.longitude);
             var Places = ncmb.DataStore("PlacePoints");
@@ -170,18 +212,36 @@ function onFindSuccess(location){
                         .fetchAll()
                         .then(function(results){
                             var data = [];
+                            if(results.length) {
+                                // すでに別なポップアップが開いていたら消します
+                                if (popup) map.removePopup(popup);
+                            }
                             for (var i = 0; i < results.length; i++) {
                                 var result = results[i];
                                 var markers = new OpenLayers.Layer.Markers("Markers");
                                 map.addLayer(markers);
                                 var regist_location = result.get("geo");
+                                
+                                var iconsize = new OpenLayers.Size(32, 32);
+                                var point    = new OpenLayers.Pixel(-(iconsize.w/2), -iconsize.h);
                                 var marker = new OpenLayers.Marker(
                                     new OpenLayers.LonLat(regist_location.longitude,regist_location.latitude)
-                                                .transform(
-                                                   projection4326, 
-                                                   projection900913
-                                            )
+                                                .transform(projection4326,projection900913),
+                                    new OpenLayers.Icon('point_na32.png', iconsize, point)
                                 );
+                                //ポイント名をポップアップで表示
+                                marker.tag = result.name;
+                                // マーカーをタップした際にポップアップを表示します
+                                marker.events.register("touchstart", marker, function(event) {
+                                 // ポップアップを作成
+                                 popup = new OpenLayers.Popup("chicken",
+                                 event.object.lonlat,
+                                 new OpenLayers.Size(100,50),
+                                 event.object.tag,
+                                 true);
+                                 // 作成したポップアップを地図に追加します
+                                 map.addPopup(popup);
+                                 });
                                 markers.addMarker(marker);
                             }
                         });
