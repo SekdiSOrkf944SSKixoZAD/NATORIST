@@ -4,8 +4,21 @@ document.addEventListener('init', function(event) {
   if (page.id === 'info-page') {
     console.log(page.data.title);
     
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var dataUrl = reader.result;
+      document.getElementById("info-img").src = dataUrl;
+    }
+    ncmb.File.download(page.data.img, "blob")
+    .then(function(blob) {
+      reader.readAsDataURL(blob);
+    })
+    .catch(function(err) {
+      console.error(err);
+    })
+    
     document.getElementById("info-title").innerHTML = page.data.title;
-    document.getElementById("info-img").src = page.data.img;
+    //document.getElementById("info-img").src = page.data.img;
     document.getElementById("info-detail").innerHTML = page.data.detail;
   }
 });
