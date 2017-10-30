@@ -13,5 +13,14 @@
         "ncmb-push-monaca-plugin@2.0.7",
         "cordova-custom-config@2.0.3",
         "cordova-plugin-dialogs@1.3.3"
-    ]
+    ],
+    "title-ja": "ナトリスト",
+    "title-en": "",
+    "description-ja": "",
+    "description-en": "",
+    "category": "User Template",
+    "platform": [
+        "android"
+    ],
+    "name": "generated-1509192304-59ec02b9e78885ca388b4567"
 }
